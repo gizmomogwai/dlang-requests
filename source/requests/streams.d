@@ -933,7 +933,7 @@ else {
                 if (e == EINTR) {
                     continue;
                 }
-                throw new Exception("ssl connect failed: %s (ssl error %d, errno %d: %s)".format(
+                throw new ConnectError("ssl connect failed: %s (ssl error %d, errno %d: %s)".format(
                         to!string(openssl.ERR_reason_error_string(openssl.ERR_get_error())),
                         openssl.SSL_get_error(ssl, rc), e, to!string(strerror(e))));
             }
@@ -1188,6 +1188,12 @@ public abstract class SocketStream : NetworkStream {
                     }
                 }
                 close();
+                version(Posix) {
+                    // SNDTIMEO expired, same mapping as receive
+                    if (e == EAGAIN) {
+                        throw new TimeoutException("Timeout sending data");
+                    }
+                }
                 throw new NetworkException("sending data: %s".format(to!string(strerror(e))));
             }
             return rc;

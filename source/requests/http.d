@@ -1554,7 +1554,7 @@ public struct HTTPRequest {
             if ( _response._responseHeaders.length != 0 )
             {
                 _stream.close();
-                throw new RequestException("Unexpected network error");
+                throw new RequestException("Unexpected network error: %s".format(e.msg), __FILE__, __LINE__, e);
             }
         }
 
@@ -2265,7 +2265,7 @@ public struct HTTPRequest {
             if ( _response._responseHeaders.length != 0 )
             {
                 _stream.close();
-                throw new RequestException("Unexpected network error");
+                throw new RequestException("Unexpected network error: %s".format(e.msg), __FILE__, __LINE__, e);
             }
         }
 
