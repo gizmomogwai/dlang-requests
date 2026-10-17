@@ -1114,9 +1114,8 @@ public struct HTTPRequest {
             _response._finishedAt = Clock.currTime;
         }
         catch (NetworkException e) {
-            errorf("Error sending request: ", e.msg);
             _stream.close();
-            return _response;
+            throw new RequestException("Error sending request to %s: %s".format(_uri.uri(No.params), e.msg), __FILE__, __LINE__, e);
         }
 
         if ( serverPrematurelyClosedConnection()
@@ -1349,7 +1348,7 @@ public struct HTTPRequest {
             _response._finishedAt = Clock.currTime;
         } catch (NetworkException e) {
             _stream.close();
-            throw new RequestException("Network error during data exchange");
+            throw new RequestException("Network error during data exchange: %s".format(e.msg), __FILE__, __LINE__, e);
         }
 
         if ( serverPrematurelyClosedConnection()
@@ -1837,7 +1836,7 @@ public struct HTTPRequest {
         catch (NetworkException e)
         {
             _stream.close();
-            throw new RequestException("Network error during data exchange");
+            throw new RequestException("Network error during data exchange: %s".format(e.msg), __FILE__, __LINE__, e);
         }
         if ( serverPrematurelyClosedConnection()
         && !restartedRequest
@@ -2055,9 +2054,8 @@ public struct HTTPRequest {
             _response._finishedAt = Clock.currTime;
         }
         catch (NetworkException e) {
-            errorf("Error sending request: ", e.msg);
             _stream.close();
-            return _response;
+            throw new RequestException("Error sending request to %s: %s".format(_uri.uri(No.params), e.msg), __FILE__, __LINE__, e);
         }
 
         if ( serverPrematurelyClosedConnection()

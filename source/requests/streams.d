@@ -918,14 +918,28 @@ else {
         @trusted
         override void connect(Address dest) {
             super.connect(dest);
-            if(openssl.SSL_connect(ssl) == -1) {
-                throw new Exception("ssl connect failed: %s".format(to!string(openssl.ERR_reason_error_string(openssl.ERR_get_error()))));
+            sslConnect();
+        }
+        @trusted
+        private void sslConnect() {
+            while (true) {
+                errno = 0; // OpenSSL does not reset errno, a stale EINTR would loop forever
+                auto rc = openssl.SSL_connect(ssl);
+                if (rc == 1) {
+                    return;
+                }
+                auto e = errno;
+                // GC stop-the-world signals interrupt blocking syscalls, retry
+                if (e == EINTR) {
+                    continue;
+                }
+                throw new Exception("ssl connect failed: %s (ssl error %d, errno %d: %s)".format(
+                        to!string(openssl.ERR_reason_error_string(openssl.ERR_get_error())),
+                        openssl.SSL_get_error(ssl, rc), e, to!string(strerror(e))));
             }
         }
         auto connectSSL() {
-            if(openssl.SSL_connect(ssl) == -1) {
-                throw new Exception("ssl connect failed: %s".format(to!string(openssl.ERR_reason_error_string(openssl.ERR_get_error()))));
-            }
+            sslConnect();
             debug(requests) tracef("ssl socket connected");
             return this;
         }
@@ -1162,12 +1176,22 @@ public abstract class SocketStream : NetworkStream {
     ptrdiff_t send(const(void)[] buff)
     in {assert(isConnected);}
     do {
-        auto rc = s.send(buff);
-        if (rc < 0) {
-            close();
-            throw new NetworkException("sending data: %s".format(to!string(strerror(errno))));
+        while (true) {
+            errno = 0; // SSL sockets do not reset errno, a stale EINTR would loop forever
+            auto rc = s.send(buff);
+            if (rc < 0) {
+                auto e = errno;
+                version(Posix) {
+                    // GC stop-the-world signals interrupt blocking syscalls, retry like receive
+                    if (e == EINTR) {
+                        continue;
+                    }
+                }
+                close();
+                throw new NetworkException("sending data: %s".format(to!string(strerror(e))));
+            }
+            return rc;
         }
-        return rc;
     }
 
     ptrdiff_t receive(void[] buff) {
